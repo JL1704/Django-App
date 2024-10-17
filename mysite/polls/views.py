@@ -1,17 +1,20 @@
 from django.db.models import F
 from django.http import HttpResponseRedirect
-from django.shortcuts import get_object_or_404, render
+from django.shortcuts import get_object_or_404, render, redirect
 from django.urls import reverse
 from django.views import generic
+from django.views.generic import ListView
+
+from .forms import QuestionForm, ChoiceForm
 from .models import Choice, Question
 
-class IndexView(generic.ListView):
-    template_name = "polls/index.html"
-    context_object_name = "latest_question_list"
+class IndexView(ListView):
+    template_name = 'polls/index.html'
+    context_object_name = 'question_list'  # Cambia 'latest_question_list' a 'question_list'
 
+    # Ajusta el queryset para que recupere todas las encuestas
     def get_queryset(self):
-        """Return the last five published questions."""
-        return Question.objects.order_by("-pub_date")[:5]
+        return Question.objects.all()
 
 class DetailView(generic.DetailView):
     model = Question
@@ -38,7 +41,34 @@ def vote(request, question_id):
     else:
         selected_choice.votes = F("votes") + 1
         selected_choice.save()
-        # Always return an HttpResponseRedirect after successfully dealing
-        # with POST data. This prevents data from being posted twice if a
-        # user hits the Back button.
+        
         return HttpResponseRedirect(reverse("polls:results", args=(question.id,)))    
+
+def question_view(request):
+    if request.method == 'POST':
+        form = QuestionForm(request.POST)
+        if form.is_valid():
+            question = form.save() 
+            return render(request, 'polls/success.html', {'question_text': question.question_text})
+    else:
+        form = QuestionForm()
+
+    return render(request, 'polls/question_form.html', {'form': form})
+      
+def success_view(request):
+    return render(request, 'polls/success.html')
+
+def create_choice_view(request):
+    if request.method == 'POST':
+        form = ChoiceForm(request.POST)
+        if form.is_valid():
+            form.save()
+            return redirect('polls:success_choice')
+    else:
+        form = ChoiceForm()
+
+    return render(request, 'polls/create_choice.html', {'form': form})
+
+
+def success_choice_view(request):
+    return render(request, 'polls/success_choice.html')
